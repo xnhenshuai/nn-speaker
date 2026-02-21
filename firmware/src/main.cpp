@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <driver/i2s.h>
 #include <esp_task_wdt.h>
+#include <esp_heap_caps.h>
 #include "I2SMicSampler.h"
 #include "ADCSampler.h"
 #include "I2SOutput.h"
@@ -78,8 +79,8 @@ i2s_pin_config_t i2s_speaker_pins = {
 
 void es8388_init(void)
 {
-    AudioKit kit;
-    auto cfg = kit.defaultConfig(AudioInputOutput);
+    audiokit::AudioKit kit;
+    auto cfg = kit.defaultConfig(audiokit::KitInputOutput);
     cfg.sample_rate = AUDIO_HAL_16K_SAMPLES;
     cfg.i2s_active = false;
     Serial.println("set AudioKit");
@@ -109,6 +110,12 @@ void setup()
   Serial.begin(115200);
   delay(1000);
   Serial.println("Starting up");
+
+#ifdef BOARD_HAS_PSRAM
+  // Prefer external RAM for generic malloc to keep internal RAM for TLS handshake.
+  heap_caps_malloc_extmem_enable(0);
+#endif
+
   // start up wifi
   // launch WiFi
   WiFi.mode(WIFI_STA);
@@ -116,11 +123,16 @@ void setup()
   if (WiFi.waitForConnectResult() != WL_CONNECTED)
   {
     Serial.println("Connection Failed! Rebooting...");
-    //delay(5000);
-    //ESP.restart();
+    delay(5000);
+    ESP.restart();
   }
   Serial.printf("Total heap: %d\n", ESP.getHeapSize());
   Serial.printf("Free heap: %d\n", ESP.getFreeHeap());
+  Serial.printf("Total PSRAM: %d\n", ESP.getPsramSize());
+  Serial.printf("Free PSRAM: %d\n", ESP.getFreePsram());
+  Serial.printf("Internal heap free: %u\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+  Serial.printf("Internal heap largest block: %u\n", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+  Serial.printf("Chip model: %s\n", ESP.getChipModel());
 
   // startup SPIFFS for the wav files
   SPIFFS.begin();
@@ -158,7 +170,7 @@ void setup()
 
   // set up the i2s sample writer task
   TaskHandle_t applicationTaskHandle;
-  xTaskCreate(applicationTask, "Application Task", 8192, application, 1, &applicationTaskHandle);
+  xTaskCreate(applicationTask, "Application Task", 4096, application, 1, &applicationTaskHandle);
 
   // start sampling from i2s device - use I2S_NUM_0 as that's the one that supports the internal ADC
 #ifdef USE_I2S_MIC_INPUT

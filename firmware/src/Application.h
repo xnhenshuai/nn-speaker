@@ -16,6 +16,7 @@ private:
     State *m_detect_wake_word_state;
     State *m_recognise_command_state;
     State *m_current_state;
+    Speaker *m_speaker;
 
 public:
     Application(I2SSampler *sample_provider, IntentProcessor *intent_processor, Speaker *speaker, IndicatorLight *indicator_light);

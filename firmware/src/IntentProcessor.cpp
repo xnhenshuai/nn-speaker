@@ -78,23 +78,23 @@ IntentResult IntentProcessor::processIntent(const Intent &intent)
         return FAILED;
     }
     Serial.printf("I heard \"%s\"\n", intent.text.c_str());
-    if (intent.intent_name.empty())
+
+    const bool has_open_keyword = intent.text.find("開") != std::string::npos;
+    const bool has_close_keyword = intent.text.find("關") != std::string::npos;
+    const bool has_light_keyword = intent.text.find("燈") != std::string::npos;
+
+    if (has_open_keyword && has_light_keyword)
     {
-        Serial.println("Can't work out what you want to do with the device...");
-        return FAILED;
+        Serial.printf("Turning on the light\n");
+        m_speaker->playLightOn();
+        return SILENT_SUCCESS;
     }
-    Serial.printf("Intent is %s\n", intent.intent_name.c_str());
-    if (intent.intent_name == "Turn_on_device")
+
+    if (has_close_keyword && has_light_keyword)
     {
-        return turnOnDevice(intent);
-    }
-    if (intent.intent_name == "Tell_joke")
-    {
-        return tellJoke();
-    }
-    if (intent.intent_name == "Life")
-    {
-        return life();
+        Serial.printf("Turning off the light\n");
+        m_speaker->playLightOff();
+        return SILENT_SUCCESS;
     }
 
     return FAILED;

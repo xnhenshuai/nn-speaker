@@ -6,7 +6,12 @@ WitAiChunkedUploader::WitAiChunkedUploader(const char *access_key)
 {
     m_wifi_client = new WiFiClientSecure();
     m_wifi_client->setInsecure();
-    m_wifi_client->connect("api.wit.ai", 443);
+    m_wifi_client->setTimeout(15);
+    if (!m_wifi_client->connect("api.wit.ai", 443))
+    {
+        Serial.println("Failed to connect to api.wit.ai over TLS");
+        return;
+    }
     char authorization_header[100];
     snprintf(authorization_header, 100, "authorization: Bearer %s", access_key);
     m_wifi_client->println("POST /speech?v=20200927 HTTP/1.1");
@@ -68,6 +73,44 @@ Intent WitAiChunkedUploader::getResults()
         }
     }
     Serial.printf("Http status is %d with content length of %d\n", status, content_length);
+
+    String response_body;
+    if (content_length > 0)
+    {
+        response_body.reserve(content_length + 1);
+        while (m_wifi_client->connected() && response_body.length() < static_cast<unsigned int>(content_length))
+        {
+            int ch = m_wifi_client->read();
+            if (ch < 0)
+            {
+                delay(1);
+                continue;
+            }
+            response_body += static_cast<char>(ch);
+        }
+    }
+    else
+    {
+        unsigned long last_data_time = millis();
+        while (m_wifi_client->connected() || m_wifi_client->available())
+        {
+            while (m_wifi_client->available())
+            {
+                response_body += static_cast<char>(m_wifi_client->read());
+                last_data_time = millis();
+            }
+
+            if (millis() - last_data_time > 1000)
+            {
+                break;
+            }
+            delay(1);
+        }
+    }
+
+    Serial.println("Wit.ai raw response JSON:");
+    Serial.println(response_body);
+
     if (status == 200)
     {
         StaticJsonDocument<500> filter;
@@ -79,7 +122,12 @@ Intent WitAiChunkedUploader::getResults()
         filter["traits"]["wit$on_off"][0]["value"] = true;
         filter["traits"]["wit$on_off"][0]["confidence"] = true;
         StaticJsonDocument<500> doc;
-        deserializeJson(doc, *m_wifi_client, DeserializationOption::Filter(filter));
+        DeserializationError error = deserializeJson(doc, response_body, DeserializationOption::Filter(filter));
+        if (error)
+        {
+            Serial.printf("deserializeJson failed: %s\n", error.c_str());
+            return Intent{};
+        }
 
         const char *text = doc["text"];
         const char *intent_name = doc["intents"][0]["name"];

@@ -27,13 +27,13 @@ void indicatorLedTask(void *param)
             case OFF:
             {
                 ledcWrite(0, 0);
-                uart2_send("{8701fe}"); // off
+                uart2_send((char *)"{8701fe}"); // off
                 break;
             }
             case ON:
             {
                 ledcWrite(0, 255);
-                uart2_send("{8701ff}"); // on
+                uart2_send((char *)"{8701ff}"); // on
                 break;
             }
             case PULSING:
@@ -55,9 +55,9 @@ void indicatorLedTask(void *param)
 IndicatorLight::IndicatorLight()
 {
     Serial2.begin(115200, SERIAL_8N1, 15, 19);
-    uart2_send("{8701ff}"); // on
+    uart2_send((char *)"{8701ff}"); // on
     vTaskDelay(100);
-    uart2_send("{8701fe}"); // off
+    uart2_send((char *)"{8701fe}"); // off
 
     // use the build in LED as an indicator - we'll set it up as a pwm output so we can make it glow nicely
     ledcSetup(0, 10000, 8);

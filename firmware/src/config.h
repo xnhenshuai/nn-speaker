@@ -1,6 +1,6 @@
 // WiFi credentials
-#define WIFI_SSID "<<YOUR SSID>>"
-#define WIFI_PSWD "<<YOUR PASSOWRD>>"
+#define WIFI_SSID "hsc48"
+#define WIFI_PSWD "04124572"
 
 // are you using an I2S microphone - comment this out if you want to use an analog mic and ADC input
 #define USE_I2S_MIC_INPUT
@@ -23,4 +23,5 @@
 #define I2S_SPEAKER_SERIAL_DATA GPIO_NUM_27
 
 // command recognition settings
-#define COMMAND_RECOGNITION_ACCESS_KEY "P5QMUSMFV6IRRSTABXFQ7UIXPFRMC4L5"
+//#define COMMAND_RECOGNITION_ACCESS_KEY "P5QMUSMFV6IRRSTABXFQ7UIXPFRMC4L5"
+#define COMMAND_RECOGNITION_ACCESS_KEY "N6HHFVXOVIZFCLAPEMC7LPDZ4KXONLSJ"

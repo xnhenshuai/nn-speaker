@@ -8,6 +8,8 @@ Speaker::Speaker(I2SOutput *i2s_output)
     m_ok = new WAVFileReader("/ok.wav");
     m_ready_ping = new WAVFileReader("/ready_ping.wav");
     m_cantdo = new WAVFileReader("/cantdo.wav");
+    m_light_on = new WAVFileReader("/light_on.wav");
+    m_light_off = new WAVFileReader("/light_off.wav");
     m_life = new WAVFileReader("/life.wav");
     m_jokes[0] = new WAVFileReader("/joke0.wav");
     m_jokes[1] = new WAVFileReader("/joke1.wav");
@@ -21,6 +23,8 @@ Speaker::~Speaker()
     delete m_ok;
     delete m_ready_ping;
     delete m_cantdo;
+    delete m_light_on;
+    delete m_light_off;
     delete m_life;
     delete m_jokes[0];
     delete m_jokes[1];
@@ -45,6 +49,18 @@ void Speaker::playCantDo()
 {
     m_cantdo->reset();
     m_i2s_output->setSampleGenerator(m_cantdo);
+}
+
+void Speaker::playLightOn()
+{
+    m_light_on->reset();
+    m_i2s_output->setSampleGenerator(m_light_on);
+}
+
+void Speaker::playLightOff()
+{
+    m_light_off->reset();
+    m_i2s_output->setSampleGenerator(m_light_off);
 }
 
 void Speaker::playRandomJoke()

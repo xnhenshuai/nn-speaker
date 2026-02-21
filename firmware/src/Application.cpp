@@ -15,6 +15,8 @@ Application::Application(I2SSampler *sample_provider, IntentProcessor *intent_pr
     // start off in the detecting wakeword state
     m_current_state = m_detect_wake_word_state;
     m_current_state->enterState();
+    m_speaker = speaker;
+
 }
 
 // process the next batch of samples
@@ -28,6 +30,8 @@ void Application::run()
         if (m_current_state == m_detect_wake_word_state)
         {
             m_current_state = m_recognise_command_state;
+            //m_current_state = m_detect_wake_word_state;
+            m_speaker->playOK();
         }
         else
         {

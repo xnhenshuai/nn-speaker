@@ -10,6 +10,8 @@ private:
     WAVFileReader *m_ok;
     WAVFileReader *m_cantdo;
     WAVFileReader *m_ready_ping;
+    WAVFileReader *m_light_on;
+    WAVFileReader *m_light_off;
     WAVFileReader *m_life;
     WAVFileReader *m_jokes[5];
 
@@ -21,6 +23,8 @@ public:
     void playOK();
     void playReady();
     void playCantDo();
+    void playLightOn();
+    void playLightOff();
     void playRandomJoke();
     void playLife();
 };

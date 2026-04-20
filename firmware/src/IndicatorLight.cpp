@@ -1,81 +1,62 @@
 #include <Arduino.h>
+#include "Application.h"
+#include "state_machine/DetectWakeWordState.h"
+#include "state_machine/RecogniseCommandState.h"
 #include "IndicatorLight.h"
-#include "driver/uart.h"
+#include "Speaker.h"
+#include "IntentProcessor.h"
 
-void uart2_send(char * buf)
+Application::Application(I2SSampler *sample_provider, IntentProcessor *intent_processor, Speaker *speaker, IndicatorLight *indicator_light)
 {
-  while (*buf) {
-    Serial2.write(*buf);
-    vTaskDelay(2);
-    buf++;
-  }
+    // detect wake word state
+    m_detect_wake_word_state = new DetectWakeWordState(sample_provider);
+
+    // command recogniser
+    m_recognise_command_state = new RecogniseCommandState(sample_provider, indicator_light, speaker, intent_processor);
+
+    // 初始狀態：等待 wake word
+    m_current_state = m_detect_wake_word_state;
+    m_current_state->enterState();
+
+    m_speaker = speaker;
+
+    // 存 LED 控制
+    m_indicator_light = indicator_light;
+
+    // 一開始燈關閉（等待 wake word）
+    m_indicator_light->setState(OFF);
 }
 
-// This task does all the heavy lifting for our application
-void indicatorLedTask(void *param)
+// process the next batch of samples
+void Application::run()
 {
-    IndicatorLight *indicator_light = static_cast<IndicatorLight *>(param);
-    const TickType_t xMaxBlockTime = pdMS_TO_TICKS(100);
-    while (true)
+    bool state_done = m_current_state->run();
+
+    if (state_done)
     {
-        // wait for someone to trigger us
-        uint32_t ulNotificationValue = ulTaskNotifyTake(pdTRUE, xMaxBlockTime);
-        if (ulNotificationValue > 0)
+        m_current_state->exitState();
+
+        // 🔁 狀態切換
+        if (m_current_state == m_detect_wake_word_state)
         {
-            switch (indicator_light->getState())
-            {
-            case OFF:
-            {
-                ledcWrite(0, 0);
-                uart2_send((char *)"{8701fe}"); // off
-                break;
-            }
-            case ON:
-            {
-                ledcWrite(0, 255);
-                uart2_send((char *)"{8701ff}"); // on
-                break;
-            }
-            case PULSING:
-            {
-                // do a nice pulsing effect
-                float angle = 0;
-                while (indicator_light->getState() == PULSING)
-                {
-                    ledcWrite(0, 255 * (0.5 * cos(angle) + 0.5));
-                    vTaskDelay(50 / portTICK_PERIOD_MS);
-                    angle += 0.4 * M_PI;
-                }
-            }
-            }
+            // 偵測到 wake word → 開燈
+            m_indicator_light->setState(ON);
+
+            m_current_state = m_recognise_command_state;
+
+            // 播放提示音
+            m_speaker->playOK();
         }
+        else
+        {
+            // 辨識完成 → 關燈
+            m_indicator_light->setState(OFF);
+
+            m_current_state = m_detect_wake_word_state;
+        }
+
+        m_current_state->enterState();
     }
-}
 
-IndicatorLight::IndicatorLight()
-{
-    Serial2.begin(115200, SERIAL_8N1, 15, 19);
-    uart2_send((char *)"{8701ff}"); // on
-    vTaskDelay(100);
-    uart2_send((char *)"{8701fe}"); // off
-
-    // use the build in LED as an indicator - we'll set it up as a pwm output so we can make it glow nicely
-    ledcSetup(0, 10000, 8);
-    ledcAttachPin(2, 0);
-    ledcWrite(0, 0);
-    // start off with the light off
-    m_state = OFF;
-    // set up the task for controlling the light
-    xTaskCreate(indicatorLedTask, "Indicator LED Task", 4096, this, 1, &m_taskHandle);
-}
-
-void IndicatorLight::setState(IndicatorState state)
-{
-    m_state = state;
-    xTaskNotify(m_taskHandle, 1, eSetBits);
-}
-
-IndicatorState IndicatorLight::getState()
-{
-    return m_state;
+    vTaskDelay(10);
 }
